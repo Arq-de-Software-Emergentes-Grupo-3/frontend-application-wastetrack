@@ -1,100 +1,167 @@
-"use client"
+'use client'
+import { useState } from 'react'
+import styles from '@/components/ui/auth/login.module.css'
+import ErrorOverlay from '@/components/ui/shared/MessageOverlay';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { loginUser } from '@/app/services/auth/authService';
+import Cookies from 'js-cookie';
 
-import type React from "react"
+export default function LoginForm() {
+    const [usuario, setUsuario] = useState('')
+    const [contrasena, setContrasena] = useState('')
+    const [error, setError] = useState('')
+    const [loading, setLoading] = useState(false)
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+    const camposCompletos = usuario.trim() !== '' && contrasena.trim() !== ''
 
-export default function LoginPage() {
-  const router = useRouter()
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+    const [showError, setShowError] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
 
-    // Simulación de login - en producción conectaría con API
-    setTimeout(() => {
-      // Credenciales de prueba
-      if (username === "admin" && password === "admin") {
-        localStorage.setItem("isLoggedIn", "true")
-        router.push("/")
-      } else {
-        setError("Usuario o contraseña incorrectos")
+    const router = useRouter();
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setError('');
+    
+      if (!camposCompletos) {
+        setError('Todos los campos son obligatorios.');
+        return;
       }
-      setLoading(false)
-    }, 1000)
-  }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-green-600 to-green-400 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-8">
-        <div className="flex flex-col items-center justify-center mb-8">
-          <Image
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/wasteTrackLogo-At4isWGBWjroCmtuzvcsTsvQdvAapf.png"
-            alt="WasteTrack Logo"
-            width={150}
-            height={150}
-          />
-        </div>
 
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded">
-            <p className="text-red-700 text-sm">{error}</p>
-          </div>
-        )}
+    
+      setLoading(true);
+    
+      try {
+        const res = await loginUser({ 
+          email: usuario,
+          password: contrasena
+         });
+    
+        if(!res) {
+          setError('Error al iniciar sesión. Por favor, intenta nuevamente.');
+          setShowError(true);
+          setTimeout(() => setShowError(false), 3000);
+        }
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div className="space-y-2">
-            <label htmlFor="username" className="block text-gray-700">
-              Usuario
-            </label>
-            <Input
-              id="username"
-              type="text"
-              placeholder="Ingresa tu usuario"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              className="w-full bg-gray-100 border-gray-300"
+        if (res.access_token) {
+          Cookies.set('access_token', res.access_token, {
+            path: '/', // Asegúrate de que la cookie esté disponible en todo el sitio
+            secure: false,
+            sameSite: 'Lax', // Cambia a 'Strict' si es necesario 
+            expires: 7 
+          }); // Guarda el token en una cookie con expiración de 7 días
+
+          localStorage.setItem('guid', JSON.stringify(res.guid)); // Guarda el usuario en localStorage
+          localStorage.setItem('role', JSON.stringify(res.role));
+
+          // navega a la página de inicio
+          router.push('/containers');
+          return;
+
+        } else {
+          setError('Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.');
+          setShowError(true);
+          setTimeout(() => setShowError(false), 3000);
+        }
+    
+        
+    
+      } catch (err) {
+        console.log(err)
+        setError(err.detail);
+        setShowError(true);
+        setTimeout(() => setShowError(false), 3000);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+
+    return (
+        <>
+            <ErrorOverlay
+                message={error}
+                show={showError}
+                onClose={() => setShowError(false)}
             />
-          </div>
 
-          <div className="space-y-2">
-            <label htmlFor="password" className="block text-gray-700">
-              Contraseña
-            </label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Ingresa tu contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full bg-gray-100 border-gray-300"
-            />
-          </div>
+        <div
+            className={styles.container_principale}
+            
+            >
+            <div className={styles.container_secondary}>
+                <div className={styles.container_form }>
+                    <form
+                        onSubmit={handleSubmit}
+                        className="bg-white bg-opacity-90 pt-10 pb-6 pr-6 pl-6 rounded-2xl w-[500px] space-y-6 shadow-xl flex flex-col items-center justify-center"
+                        >
+                        <Image
+                            src="/image_2.png" // NO pongas /public
+                            alt="Descripción de la imagen"
+                            width={130}        // Ajusta el tamaño según lo necesites
+                            height={130}
+                          />
 
-          <Button
-            type="submit"
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-md"
-            disabled={loading}
-          >
-            {loading ? "Procesando..." : "Ingresar"}
-          </Button>
-        </form>
+                        <div className='w-full flex  flex-col items-center '>
 
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>Para pruebas, usa: usuario: admin, contraseña: admin</p>
+                            <div className="w-[90%] flex items-start  mb-1">
+                              <label className="block text-black text-sm mb-1">Usuario</label>
+                            </div>
+                            <input
+                                type="text"
+                                value={usuario}
+                                onChange={(e) => setUsuario(e.target.value)}
+                                className="w-[90%] px-4 py-2 rounded-[20px] border border-none bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-white shadow-md transition duration-300"
+                                style={{ backgroundColor: '#D9D9D9' }}
+                                placeholder='Ingresa tu usuario'
+                                />
+                        </div>
+
+                        <div className='w-full flex  flex-col items-center '>
+                          <div className="w-[90%] flex items-start  mb-1">
+
+                            <label className="block text-black text-sm mb-1">Contraseña</label>
+                          </div>
+                            <input
+                                type="password"
+                                value={contrasena}
+                                onChange={(e) => setContrasena(e.target.value)}
+                                placeholder='Ingresa tu contrasena'
+                                className="w-[90%] px-4 py-2 rounded-[20px] border border-none bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-white shadow-md transition duration-300"
+                                style={{ backgroundColor: '#D9D9D9' }}
+                                />
+
+                        </div>
+
+                        <div className="w-full flex justify-center mt-5 mb-20">
+                            <button
+                                    type="submit"
+                                    disabled={!camposCompletos || loading}
+                                    style={{ backgroundColor: '#6AB04C' }}
+                                    className={`w-[90%] font-medium text-white py-2 rounded-[20px] transition duration-500	  ${
+                                        camposCompletos && !loading
+                                        ? 'bg-white text-indigo-600 hover:bg-indigo-500 hover:text-white cursor-pointer'
+                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    }`}
+                                    >
+                                    {loading ? 'Verificando' : 'Ingresar'}
+                            </button>
+                        </div>
+
+                     
+                    </form>
+                </div>
+        
+
+            </div>
         </div>
-      </div>
-    </div>
-  )
+        
+    </>
+    )
 }
+
+
+
+

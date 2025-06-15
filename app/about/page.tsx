@@ -10,13 +10,6 @@ import Sidebar from "@/components/sidebar"
 export default function AboutPage() {
   const router = useRouter()
 
-  // Verificar si el usuario está logueado
-  useEffect(() => {
-    const isLoggedIn = localStorage.getItem("isLoggedIn")
-    if (!isLoggedIn) {
-      router.push("/auth/login")
-    }
-  }, [router])
 
   return (
     <div className="flex h-screen bg-gray-100">
