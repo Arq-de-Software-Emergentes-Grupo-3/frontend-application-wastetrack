@@ -21,6 +21,8 @@ interface ScheduleCollectionModalProps {
   onClose: () => void
   guids: string[] // <-- nuevo
   onRouteGenerated?: (route: any) => void // opcional: si quieres enviarla al padre
+  setLoadingRoute: (val: boolean) => void
+
 }
 
 export default function ScheduleCollectionModal({
@@ -29,6 +31,8 @@ export default function ScheduleCollectionModal({
   onClose,
   guids, // <-- nuevo
   onRouteGenerated, // opcional: si quieres enviarla al padre
+  setLoadingRoute, // <-- nuevo
+  
 }: ScheduleCollectionModalProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -51,18 +55,21 @@ export default function ScheduleCollectionModal({
 
  
 
-    const handleGenerateRoute = async () => {
-      try {
-        const response = await bestRoute(guids)
-        alert("Ruta generada correctamente.")
-        if (onRouteGenerated) {
-          onRouteGenerated(response)
-        }
-      } catch (error) {
-        console.error("Error al generar ruta:", error)
-        alert("Error al generar la ruta.")
-      }
+  const handleGenerateRoute = async () => {
+    try {
+      setLoading(true)
+      setLoadingRoute(true)  // ← activa el GIF
+      const response = await bestRoute(guids)
+      if (onRouteGenerated) onRouteGenerated(response)
+    } catch (error) {
+      alert("Error al generar la ruta.")
+    } finally {
+      setLoading(false)
+      setLoadingRoute(false)  // ← desactiva el GIF
     }
+  }
+  
+
   
 
   return (

@@ -40,6 +40,7 @@ export default function MapPage() {
   const [containers, setContainers] = useState<Container[]>([])
   const [guids, setGuids] = useState<string[]>([])
   const [routeCoordinates, setRouteCoordinates] = useState<{ lat: number; lng: number }[]>([])
+  const [loadingRoute, setLoadingRoute] = useState(false)
 
   useEffect(() => {
     const fetchContainers = async () => {
@@ -235,7 +236,10 @@ export default function MapPage() {
               setRouteCoordinates(coords)
               console.log('Coordenadas generadas:', coords)
               setIsScheduleModalOpen(false)
+              setLoadingRoute(false)
             }}
+            setLoadingRoute={setLoadingRoute}
+
           />
         )}
       </div>

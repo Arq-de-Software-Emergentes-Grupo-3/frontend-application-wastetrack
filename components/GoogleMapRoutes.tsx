@@ -8,6 +8,7 @@ import {
 } from '@react-google-maps/api'
 import { useState, useEffect, useRef } from 'react'
 import { GOOGLE_MAP_LIBRARIES } from '@/lib/googleMapsConfig'
+import Image from 'next/image'
 
 const containerStyle = {
   width: '100%',
@@ -52,8 +53,9 @@ export default function MapComponent({
     mapRef.current = map
   }
 
-  // Centrar mapa en el contenedor seleccionado
   useEffect(() => {
+    console.log("API Key:", process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY)
+    console.log("Containers:", containers)
     if (
       selectedContainer &&
       mapRef.current &&
@@ -64,8 +66,12 @@ export default function MapComponent({
     }
   }, [selectedContainer])
 
-  // Dibujar la ruta solo si el array `route` es válido y tiene mínimo 2 puntos
   useEffect(() => {
+    if (!isLoaded || typeof window === 'undefined' || !window.google || route.length < 2) {
+      setDirections(null)
+      return
+    }
+  
     const cleanedRoute = route
       .map((point) => ({
         lat: Number(point.lat),
@@ -78,14 +84,9 @@ export default function MapComponent({
           !isNaN(p.lat) &&
           !isNaN(p.lng)
       )
-
-    if (!isLoaded || cleanedRoute.length < 2) {
-      setDirections(null)
-      return
-    }
-
-    const directionsService = new google.maps.DirectionsService()
-
+  
+    const directionsService = new window.google.maps.DirectionsService()
+  
     directionsService.route(
       {
         origin: centerDefault,
@@ -94,7 +95,7 @@ export default function MapComponent({
           location: point,
           stopover: true,
         })),
-        travelMode: google.maps.TravelMode.DRIVING,
+        travelMode: window.google.maps.TravelMode.DRIVING,
       },
       (result, status) => {
         if (status === 'OK' && result) {
@@ -105,51 +106,90 @@ export default function MapComponent({
       }
     )
   }, [isLoaded, route])
+  
+  
+  
 
-  if (!isLoaded) return <div>Cargando mapa...</div>
 
   return (
-    <GoogleMap
-      mapContainerStyle={containerStyle}
-      center={centerDefault}
-      zoom={14}
-      onLoad={onLoad}
-    >
-      {/* Marcador base */}
-      <Marker
-        position={centerDefault}
-        icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/truck.png' }}
-        title="Base de camiones"
-      />
+    <div style={{ display: 'flex', height: '100%' }}>
+      <div style={{ flex: 1, position: 'relative' }}>
+        <GoogleMap
+          mapContainerStyle={containerStyle}
+          center={centerDefault}
+          zoom={14}
+          onLoad={onLoad}
+        >
+          <Marker
+            position={centerDefault}
+            icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/truck.png' }}
+            title="Base de camiones"
+          />
 
-      {/* Marcadores de contenedores */}
-      {containers.map((c) => {
-        const lat = Number(c.location.lat)
-        const lng = Number(c.location.lng)
-        if (isNaN(lat) || isNaN(lng)) return null
+          {containers.map((c, index) => {
+            const lat = Number(c.location.lat)
+            const lng = Number(c.location.lng)
+            if (isNaN(lat) || isNaN(lng)) return null
+
+            return (
+              <Marker
+                key={c.id}
+                position={{ lat, lng }}
+                title={c.id}
+                label={(index + 1).toString()}
+              />
+            )
+          })}
+
+          {selectedContainer && selectedContainer.location && (
+            <Marker
+              position={{
+                lat: Number(selectedContainer.location.lat),
+                lng: Number(selectedContainer.location.lng),
+              }}
+              icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }}
+            />
+          )}
+
+          {directions && <DirectionsRenderer directions={directions} />}
+        </GoogleMap>
+      </div>
+
+      {/* Panel lateral superpuesto */}
+      {route.length > 0 && (
+        <div
+          style={{
+            width: '250px',
+            backgroundColor: 'white',
+            borderLeft: '1px solid #ccc',
+            padding: '1rem',
+            overflowY: 'auto',
+          }}
+        >
+          <h3 style={{ marginBottom: '0.5rem' }}>Orden de visita</h3>
+          <ol style={{ paddingLeft: '1.2rem' }}>
+      {route.map((point, index) => {
+        const matched = containers.find(
+          (c) =>
+            Number(c.location.lat).toFixed(5) === Number(point.lat).toFixed(5) &&
+            Number(c.location.lng).toFixed(5) === Number(point.lng).toFixed(5)
+        )
 
         return (
-          <Marker
-            key={c.id}
-            position={{ lat, lng }}
-            title={c.id}
-          />
+          <li key={index}>
+            <strong>{matched?.name || `Punto ${index + 1}`}</strong>
+            <br />
+            <small>
+              Lat: {point.lat.toFixed(5)} <br />
+              Lng: {point.lng.toFixed(5)}
+            </small>
+          </li>
         )
       })}
+    </ol>
 
-      {/* Contenedor seleccionado (marcador verde) */}
-      {selectedContainer && selectedContainer.location && (
-        <Marker
-          position={{
-            lat: Number(selectedContainer.location.lat),
-            lng: Number(selectedContainer.location.lng),
-          }}
-          icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }}
-        />
+        </div>
       )}
-
-      {/* Ruta optimizada */}
-      {directions && <DirectionsRenderer directions={directions} />}
-    </GoogleMap>
+    </div>
   )
 }
