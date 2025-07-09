@@ -42,9 +42,9 @@ export default function ContainersPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const getFillLevelColor = (level: number) => {
-    if (level >= 80) return "bg-red-500"
-    if (level >= 60) return "bg-yellow-500"
+  const getFillLevelColor = (level: number, limit: number) => {
+    if (level >= limit) return "bg-red-500"
+    if (level >= limit * 0.75) return "bg-yellow-500"
     return "bg-green-500"
   }
 
@@ -79,21 +79,53 @@ export default function ContainersPage() {
                           <div className="flex items-center">
                             <div className="w-full bg-gray-200 rounded-full h-2.5">
                               <div
-                                className={`h-2.5 rounded-full ${getFillLevelColor(container.capacity)}`}
-                                style={{ width: `${container.capacity}%` }}
+                                className={`h-2.5 rounded-full ${
+                                  container.status === "inactive"
+                                    ? "bg-gray-400"
+                                    : getFillLevelColor(container.capacity, container.limit)
+                                }`}
+                                style={{
+                                  width:
+                                    container.status === "inactive"
+                                      ? "100%"
+                                      : `${container.capacity}%`,
+                                }}
                               />
                             </div>
-                            <span className="ml-2 text-sm text-gray-500">{container.capacity}%</span>
+                            <span className="ml-2 text-sm text-gray-500">
+                              {container.status === "inactive"
+                                ? "Sin lectura"
+                                : `${container.capacity}%`}
+                            </span>
                           </div>
+
                           <span className="text-xs text-gray-400 italic">
-                            Última lectura: {container.lastUpdatedClient}
+                            {container.status === "inactive"
+                              ? "Lectura deshabilitada"
+                              : `Última lectura: ${container.lastUpdatedClient}`}
                           </span>
+
+                          {container.status !== "inactive" && (
+                            <>
+                              <span className="text-xs text-gray-500">
+                                Umbral de alerta: {container.limit}%
+                              </span>
+
+                              {container.capacity >= container.limit && (
+                                <span className="text-xs text-red-600 font-semibold">
+                                  ⚠ Contenedor lleno
+                                </span>
+                              )}
+                            </>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">{container.status}</td>
                       <td className="px-6 py-4 text-sm font-medium">
                         <Link href={`/containers/${container.guid}`}>
-                          <Button className="bg-green-800 hover:bg-green-900 text-white">Ver detalle</Button>
+                          <Button className="bg-green-800 hover:bg-green-900 text-white">
+                            Ver detalle
+                          </Button>
                         </Link>
                       </td>
                     </tr>

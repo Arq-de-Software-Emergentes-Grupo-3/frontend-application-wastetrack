@@ -4,27 +4,44 @@ import {
   GoogleMap,
   Marker,
   DirectionsRenderer,
-  useJsApiLoader
-} from "@react-google-maps/api"
-import { useState, useEffect, useRef } from "react"
+  useJsApiLoader,
+} from '@react-google-maps/api'
+import { useState, useEffect, useRef } from 'react'
 
 const containerStyle = {
-  width: "100%",
-  height: "100%"
+  width: '100%',
+  height: '100%',
 }
 
 const centerDefault = {
-  lat: -12.090609066418608, // Real Plaza Salaverry
-  lng: -77.05577522688435
+  lat: -12.068572,
+  lng: -77.043147,
 }
 
-export default function MapComponent({ containers, selectedContainer }: {
-  containers: any[],
-  selectedContainer: any | null
-}) {
+interface LatLng {
+  lat: number
+  lng: number
+}
+
+interface Container {
+  id: string
+  location: LatLng
+}
+
+interface MapComponentProps {
+  containers: Container[]
+  selectedContainer: Container | null
+  route?: LatLng[]
+}
+
+export default function MapComponent({
+  containers,
+  selectedContainer,
+  route = [],
+}: MapComponentProps) {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries: ['places', 'maps'],
+    libraries: ['places'],
   })
 
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null)
@@ -34,79 +51,103 @@ export default function MapComponent({ containers, selectedContainer }: {
     mapRef.current = map
   }
 
-  const waypoints = containers
-    .map((c: any) => ({
-      location: {
-        lat: parseFloat(c.location.lat),
-        lng: parseFloat(c.location.lng)
-      },
-      stopover: true
-    }))
-    .filter((wp) => !isNaN(wp.location.lat) && !isNaN(wp.location.lng))
-
-  const origin = centerDefault
-  const destination = waypoints[waypoints.length - 1]?.location || centerDefault
-
+  // Centrar mapa en el contenedor seleccionado
   useEffect(() => {
-    if (!isLoaded || containers.length === 0) return
+    if (
+      selectedContainer &&
+      mapRef.current &&
+      typeof selectedContainer.location.lat === 'number' &&
+      typeof selectedContainer.location.lng === 'number'
+    ) {
+      mapRef.current.panTo(selectedContainer.location)
+    }
+  }, [selectedContainer])
 
-    const service = new google.maps.DirectionsService()
-    service.route(
+  // Dibujar la ruta solo si el array `route` es válido y tiene mínimo 2 puntos
+  useEffect(() => {
+    const cleanedRoute = route
+      .map((point) => ({
+        lat: Number(point.lat),
+        lng: Number(point.lng),
+      }))
+      .filter(
+        (p) =>
+          typeof p.lat === 'number' &&
+          typeof p.lng === 'number' &&
+          !isNaN(p.lat) &&
+          !isNaN(p.lng)
+      )
+
+    if (!isLoaded || cleanedRoute.length < 2) {
+      setDirections(null)
+      return
+    }
+
+    const directionsService = new google.maps.DirectionsService()
+
+    directionsService.route(
       {
-        origin,
-        destination,
-        waypoints: waypoints.slice(0, -1),
+        origin: centerDefault,
+        destination: cleanedRoute[cleanedRoute.length - 1],
+        waypoints: cleanedRoute.slice(0, -1).map((point) => ({
+          location: point,
+          stopover: true,
+        })),
         travelMode: google.maps.TravelMode.DRIVING,
-        optimizeWaypoints: true
       },
       (result, status) => {
-        if (status === google.maps.DirectionsStatus.OK && result) {
+        if (status === 'OK' && result) {
           setDirections(result)
         } else {
-          console.error("Error en DirectionsService:", status)
+          console.error('Error al calcular ruta:', status)
         }
       }
     )
-  }, [isLoaded, containers])
-
-  useEffect(() => {
-    if (selectedContainer && mapRef.current) {
-      mapRef.current.panTo({
-        lat: parseFloat(selectedContainer.location.lat),
-        lng: parseFloat(selectedContainer.location.lng)
-      })
-    }
-  }, [selectedContainer])
+  }, [isLoaded, route])
 
   if (!isLoaded) return <div>Cargando mapa...</div>
 
   return (
     <GoogleMap
-      onLoad={onLoad}
       mapContainerStyle={containerStyle}
       center={centerDefault}
       zoom={14}
+      onLoad={onLoad}
     >
-      {containers.map((c: any) => (
-        <Marker
-          key={c.id}
-          position={{
-            lat: parseFloat(c.location.lat),
-            lng: parseFloat(c.location.lng)
-          }}
-        />
-      ))}
+      {/* Marcador base */}
+      <Marker
+        position={centerDefault}
+        icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/truck.png' }}
+        title="Base de camiones"
+      />
 
-      {selectedContainer && (
+      {/* Marcadores de contenedores */}
+      {containers.map((c) => {
+        const lat = Number(c.location.lat)
+        const lng = Number(c.location.lng)
+        if (isNaN(lat) || isNaN(lng)) return null
+
+        return (
+          <Marker
+            key={c.id}
+            position={{ lat, lng }}
+            title={c.id}
+          />
+        )
+      })}
+
+      {/* Contenedor seleccionado (marcador verde) */}
+      {selectedContainer && selectedContainer.location && (
         <Marker
           position={{
-            lat: parseFloat(selectedContainer.location.lat),
-            lng: parseFloat(selectedContainer.location.lng)
+            lat: Number(selectedContainer.location.lat),
+            lng: Number(selectedContainer.location.lng),
           }}
-          icon={{ url: "http://maps.google.com/mapfiles/ms/icons/green-dot.png" }}
+          icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }}
         />
       )}
 
+      {/* Ruta optimizada */}
       {directions && <DirectionsRenderer directions={directions} />}
     </GoogleMap>
   )

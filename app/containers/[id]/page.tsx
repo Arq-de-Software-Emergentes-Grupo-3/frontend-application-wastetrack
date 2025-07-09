@@ -24,6 +24,7 @@ export default function ContainerDetailPage() {
     capacity: number
     status: string
     isFavorite: boolean
+    limit: number
   }>(null)
 
   // Cargar datos del contenedor desde la API
@@ -39,6 +40,7 @@ export default function ContainerDetailPage() {
             capacity: res.capacity || 0,
             status: res.status || 'active',
             isFavorite: res.isFavorite || false,
+            limit: res.limit || 0
           })
         } else {
           console.error('Contenedor no encontrado')
@@ -66,6 +68,7 @@ export default function ContainerDetailPage() {
         capacity: container.capacity,
         status: container.status,
         isFavorite: container.isFavorite,
+        limit: container.limit
       })
       if (result) {
         alert('Contenedor actualizado exitosamente.')
@@ -172,6 +175,15 @@ export default function ContainerDetailPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Capacidad actual (%)</label>
               <Input value={container.capacity.toString()} disabled className="w-full bg-white text-gray-600" />
             </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Limite de alerta</label>
+                <Input
+                  value={container.limit}
+                  onChange={(e) => setContainer({ ...container, limit: parseInt(e.target.value) })}
+                  className="w-full bg-white"
+                  type='number'
+                />
+              </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Estado operativo</label>

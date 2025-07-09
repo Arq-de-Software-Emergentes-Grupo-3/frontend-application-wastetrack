@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { bestRoute } from '@/app/services/containers/containersManagement' // ajusta si es necesario
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, Clock, Truck, User, CalendarCheck } from "lucide-react"
 import {
@@ -15,17 +17,18 @@ import {
 } from "@/components/ui/dialog"
 
 interface ScheduleCollectionModalProps {
-  containerId: string
-  containerName: string
   isOpen: boolean
   onClose: () => void
+  guids: string[] // <-- nuevo
+  onRouteGenerated?: (route: any) => void // opcional: si quieres enviarla al padre
 }
 
 export default function ScheduleCollectionModal({
-  containerId,
-  containerName,
+
   isOpen,
   onClose,
+  guids, // <-- nuevo
+  onRouteGenerated, // opcional: si quieres enviarla al padre
 }: ScheduleCollectionModalProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -37,6 +40,8 @@ export default function ScheduleCollectionModal({
     notes: "",
   })
 
+
+
   const handleChange = (field: string, value: string) => {
     setFormData({
       ...formData,
@@ -44,15 +49,21 @@ export default function ScheduleCollectionModal({
     })
   }
 
-  const handleSubmit = () => {
-    setLoading(true)
-    // Simulación de envío - en producción conectaría con API
-    setTimeout(() => {
-      setLoading(false)
-      alert(`Recolección programada para el contenedor ${containerName} (${containerId})`)
-      onClose()
-    }, 1000)
-  }
+ 
+
+    const handleGenerateRoute = async () => {
+      try {
+        const response = await bestRoute(guids)
+        alert("Ruta generada correctamente.")
+        if (onRouteGenerated) {
+          onRouteGenerated(response)
+        }
+      } catch (error) {
+        console.error("Error al generar ruta:", error)
+        alert("Error al generar la ruta.")
+      }
+    }
+  
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -63,7 +74,7 @@ export default function ScheduleCollectionModal({
             Programar Recolección
           </DialogTitle>
           <DialogDescription>
-            Programar recolección para el contenedor {containerName} (ID: {containerId})
+            Programar recolección para todos los contenedores de residuos
           </DialogDescription>
         </DialogHeader>
 
@@ -99,21 +110,6 @@ export default function ScheduleCollectionModal({
             </div>
           </div>
 
-          <div>
-            <label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-1">
-              Prioridad
-            </label>
-            <Select value={formData.priority} onValueChange={(value) => handleChange("priority", value)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Seleccionar prioridad" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="high">Alta</SelectItem>
-                <SelectItem value="normal">Normal</SelectItem>
-                <SelectItem value="low">Baja</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
           <div>
             <label htmlFor="driver" className="block text-sm font-medium text-gray-700 mb-1">
@@ -151,18 +147,6 @@ export default function ScheduleCollectionModal({
             </Select>
           </div>
 
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-              Notas adicionales
-            </label>
-            <Input
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => handleChange("notes", e.target.value)}
-              className="w-full"
-              placeholder="Instrucciones especiales o comentarios"
-            />
-          </div>
         </div>
 
         <DialogFooter>
@@ -170,11 +154,11 @@ export default function ScheduleCollectionModal({
             Cancelar
           </Button>
           <Button
-            onClick={handleSubmit}
+            onClick={handleGenerateRoute}
             disabled={loading || !formData.date || !formData.time || !formData.driver || !formData.vehicle}
             className="bg-green-600 hover:bg-green-700"
           >
-            {loading ? "Procesando..." : "Programar recolección"}
+            {loading ? "Procesando..." : "Generar ruta óptima"}
           </Button>
         </DialogFooter>
       </DialogContent>

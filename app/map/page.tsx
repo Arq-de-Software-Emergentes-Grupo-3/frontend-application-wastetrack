@@ -1,10 +1,10 @@
-'use client'
+"use client"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, Filter, Trash2, Route, Info } from "lucide-react"
+import { Search, Filter, Info } from "lucide-react"
 import Sidebar from "@/components/sidebar"
 import MapComponent from "@/components/GoogleMapRoutes"
 import ScheduleCollectionModal from "@/components/schedule-collection-modal"
@@ -17,6 +17,8 @@ interface Container {
   fillLevel: number
   type: string
   lastCollection: string
+  status: string
+  limit: number
 }
 
 interface RouteType {
@@ -36,21 +38,29 @@ export default function MapPage() {
   const [activeView, setActiveView] = useState<"containers" | "routes">("containers")
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
   const [containers, setContainers] = useState<Container[]>([])
+  const [guids, setGuids] = useState<string[]>([])
+  const [routeCoordinates, setRouteCoordinates] = useState<{ lat: number; lng: number }[]>([])
 
   useEffect(() => {
     const fetchContainers = async () => {
       try {
         const response = await getAllContainers()
+        console.log(response)
         if (response && Array.isArray(response)) {
-          const transformed = response.filter(container => container.status === "active").map((c) => ({
-            id: c.guid,
-            name: c.name,
-            location: { lat: c.latitude, lng: c.longitude },
-            fillLevel: c.capacity,
-            type: "Desconocido",
-            lastCollection: "2025-06-15",
-          }))
+          const transformed = response
+            .filter((c) => c.status === "active")
+            .map((c) => ({
+              id: c.guid,
+              name: c.name,
+              location: { lat: c.latitude, lng: c.longitude },
+              fillLevel: c.capacity,
+              type: "Desconocido",
+              lastCollection: "2025-06-15", // reemplaza con dato real si lo tienes
+              status: c.status,
+              limit: c.limit ?? 80,
+            }))
           setContainers(transformed)
+          setGuids(transformed.map(container => container.id))
         }
       } catch (error) {
         console.error("Error al cargar contenedores:", error)
@@ -66,8 +76,28 @@ export default function MapPage() {
   )
 
   const handleScheduleCollection = () => {
+    console.log("Programar recolección para el contenedor:", selectedContainer)
     setIsScheduleModalOpen(true)
+    console.log("Guids disponibles:", guids)
+    console.log("Valor de modales:", isScheduleModalOpen)
   }
+
+
+  const getRouteCoordinatesFromGuids = (orderedGuids: string[]) => {
+    return orderedGuids
+      .map((guid) => {
+        const container = containers.find((c) => c.id === guid)
+        if (container) {
+          return {
+            lat: Number(container.location.lat),
+            lng: Number(container.location.lng),
+          }
+        }
+        return null
+      })
+      .filter((coord) => coord !== null) as { lat: number; lng: number }[]
+  }
+  
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -89,7 +119,13 @@ export default function MapPage() {
             <Button variant="outline" size="icon">
               <Filter className="h-4 w-4" />
             </Button>
+            <div className="w-full flex items-center justify-end">
+                  <Button className="w-100 bg-green-600 hover:bg-green-700" onClick={handleScheduleCollection}>
+                    Programar recolección
+                  </Button>
+                </div>
           </div>
+
         </header>
 
         <div className="flex-1 flex overflow-hidden">
@@ -112,17 +148,20 @@ export default function MapPage() {
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                           className={`h-2 rounded-full ${
-                            container.fillLevel > 80
+                            container.fillLevel >= container.limit
                               ? "bg-red-600"
-                              : container.fillLevel > 50
-                                ? "bg-yellow-500"
-                                : "bg-green-600"
+                              : container.fillLevel >= container.limit * 0.75
+                              ? "bg-yellow-500"
+                              : "bg-green-600"
                           }`}
                           style={{ width: `${container.fillLevel}%` }}
                         ></div>
                       </div>
                       <span className="text-xs font-medium ml-2">{container.fillLevel}%</span>
                     </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Umbral de alerta: {container.limit}%
+                    </p>
                   </div>
                 ))}
               </div>
@@ -130,12 +169,10 @@ export default function MapPage() {
           </div>
 
           <div className="flex-1 relative">
-            <MapComponent
-            
+          <MapComponent
               containers={containers}
-              routes={[]}
               selectedContainer={selectedContainer}
-              selectedRoute={null}
+              route={routeCoordinates}
             />
           </div>
 
@@ -158,16 +195,17 @@ export default function MapPage() {
                   <div className="w-full bg-gray-200 rounded-full h-2.5 mt-1">
                     <div
                       className={`h-2.5 rounded-full ${
-                        selectedContainer.fillLevel > 80
+                        selectedContainer.fillLevel >= selectedContainer.limit
                           ? "bg-red-600"
-                          : selectedContainer.fillLevel > 50
-                            ? "bg-yellow-500"
-                            : "bg-green-600"
+                          : selectedContainer.fillLevel >= selectedContainer.limit * 0.75
+                          ? "bg-yellow-500"
+                          : "bg-green-600"
                       }`}
                       style={{ width: `${selectedContainer.fillLevel}%` }}
                     ></div>
                   </div>
                   <p className="text-sm mt-1">{selectedContainer.fillLevel}%</p>
+                  <p className="text-xs text-gray-500">Umbral de alerta: {selectedContainer.limit}%</p>
                 </div>
                 <div>
                   <h4 className="text-sm text-gray-500">Última recolección</h4>
@@ -176,26 +214,28 @@ export default function MapPage() {
                 <div>
                   <h4 className="text-sm text-gray-500">Ubicación</h4>
                   <p className="font-medium">
-  {Number(selectedContainer.location.lat).toFixed(6)}, {Number(selectedContainer.location.lng).toFixed(6)}
-</p>
-
+                    {Number(selectedContainer.location.lat).toFixed(6)},{" "}
+                    {Number(selectedContainer.location.lng).toFixed(6)}
+                  </p>
                 </div>
-                <div className="pt-2">
-                  <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleScheduleCollection}>
-                    Programar recolección
-                  </Button>
-                </div>
+                
               </div>
             </div>
           )}
         </div>
 
-        {selectedContainer && (
+        {(
           <ScheduleCollectionModal
-            containerId={selectedContainer.id}
-            containerName={selectedContainer.name}
+
             isOpen={isScheduleModalOpen}
             onClose={() => setIsScheduleModalOpen(false)}
+            guids={guids}
+            onRouteGenerated={(response) => {
+              const coords = getRouteCoordinatesFromGuids(response.route)
+              setRouteCoordinates(coords)
+              console.log('Coordenadas generadas:', coords)
+              setIsScheduleModalOpen(false)
+            }}
           />
         )}
       </div>

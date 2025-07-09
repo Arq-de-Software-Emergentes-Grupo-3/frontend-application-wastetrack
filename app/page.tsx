@@ -9,13 +9,6 @@ import Sidebar from "@/components/sidebar"
 export default function Home() {
   const router = useRouter()
 
-  // Redirigir a la página de login si no hay sesión
-  useEffect(() => {
-    const isLoggedIn = localStorage.getItem("isLoggedIn")
-    if (!isLoggedIn) {
-      router.push("/auth/login")
-    }
-  }, [router])
 
   return (
     <div className="flex h-screen bg-gray-100">

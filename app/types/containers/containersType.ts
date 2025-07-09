@@ -8,6 +8,7 @@ export interface Container {
         "capacity": number,
         "status": string,
         "isFavorite": boolean,
+        "limit": number,
 
 }
     

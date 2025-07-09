@@ -16,6 +16,7 @@ export default function AddContainerPage() {
     address: '',
     latitude: '',
     longitude: '',
+    limit: 0
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,6 +28,7 @@ export default function AddContainerPage() {
       latitude: container.latitude,
       longitude: container.longitude,
       capacity: Math.floor(Math.random() * 100), // puedes fijarlo si prefieres
+      limit: container.limit
     }
 
       try{
@@ -88,6 +90,17 @@ export default function AddContainerPage() {
                 <p className="text-xs text-gray-600 mt-1">
                   Latitud: {container.latitude} | Longitud: {container.longitude}
                 </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Limite de alerta</label>
+                <Input
+                  value={container.limit}
+                  onChange={(e) => setContainer({ ...container, limit: parseInt(e.target.value) })} 
+                  className="w-full bg-white"
+                  required
+                  type='number'
+                />
               </div>
 
               <div className="pt-4 flex justify-center">
