@@ -7,6 +7,7 @@ import {
   useJsApiLoader,
 } from '@react-google-maps/api'
 import { useState, useEffect, useRef } from 'react'
+import { GOOGLE_MAP_LIBRARIES } from '@/lib/googleMapsConfig'
 
 const containerStyle = {
   width: '100%',
@@ -41,7 +42,7 @@ export default function MapComponent({
 }: MapComponentProps) {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries: ['places'],
+    libraries: GOOGLE_MAP_LIBRARIES,
   })
 
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null)

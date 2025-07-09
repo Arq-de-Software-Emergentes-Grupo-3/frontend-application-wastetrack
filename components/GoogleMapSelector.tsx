@@ -2,6 +2,9 @@
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { useCallback, useRef } from 'react'
 import {  MapPinIcon } from 'lucide-react'
+import { GOOGLE_MAP_LIBRARIES } from '@/lib/googleMapsConfig'
+
+
 const containerStyle = {
   width: '100%',
   height: '300px',
@@ -16,7 +19,7 @@ export default function GoogleMapSelector({ initialPosition, onLocationChange }:
   { initialPosition: { lat: number; lng: number }; onLocationChange: (lat: number, lng: number) => void }) {
     const { isLoaded } = useJsApiLoader({
       googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-      libraries: ['places', 'maps'],
+      libraries: GOOGLE_MAP_LIBRARIES,
     })
     
   const mapRef = useRef<google.maps.Map | null>(null)
